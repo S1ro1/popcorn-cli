@@ -36,13 +36,18 @@ async def fetch_available_gpus(leaderboard: str, runner: str) -> List[str]:
 
 
 async def submit_solution(
-    leaderboard: str, runner: str, gpu: str, solution_content: str
+    leaderboard: str, runner: str, gpu: str, filepath: str
 ):
     """Submit a solution to a leaderboard"""
+    with open(filepath, "r") as f:
+        solution_content = f.read()
+
+    filename = os.path.basename(filepath)
+
     async with httpx.AsyncClient(timeout=600.0) as client:
         response = await client.post(
             f"{BASE_URL}/{leaderboard}/{runner}/{gpu}",
-            files={"file": solution_content},
+            files={"file": (filename, solution_content)},
             timeout=600.0,
         )
         if response.status_code != 200:
@@ -67,8 +72,6 @@ async def _submit(filepath: str):
             console.print(f"[red]Error: File '{filepath}' not found[/red]")
             sys.exit(1)
 
-        with open(filepath, "r") as f:
-            solution_content = f.read()
 
         with Progress(
             SpinnerColumn(),
@@ -128,7 +131,7 @@ async def _submit(filepath: str):
         ) as progress:
             progress.add_task(description="Submitting solution...", total=None)
             result = await submit_solution(
-                selected_leaderboard, selected_runner, selected_gpu, solution_content
+                selected_leaderboard, selected_runner, selected_gpu, filepath
             )
 
         if result is None:
